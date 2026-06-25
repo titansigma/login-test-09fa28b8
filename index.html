@@ -12,7 +12,7 @@
   a{display:block;padding:16px 18px;background:#111827;border:1px solid #1f2937;border-radius:12px;color:#e5e7eb;text-decoration:none;font-weight:500;}
   a:hover{background:#1f2937;}
 </style>
-<script>(function(){fetch("/api/auth/me",{credentials:"same-origin"}).then(function(r){if(r.status===401){location.href="/api/auth/login?returnTo="+encodeURIComponent(location.pathname+location.search);}}).catch(function(){});})();</script></head>
+<style id="ps-gate">html{background:#0b0f19}body{visibility:hidden}</style><script>(function(){function reveal(){var s=document.getElementById("ps-gate");if(s)s.remove();}fetch("/api/auth/me",{credentials:"same-origin"}).then(function(r){if(r.status===401){location.replace("/api/auth/login?returnTo="+encodeURIComponent(location.pathname+location.search));return;}reveal();}).catch(function(){reveal();});})();</script></head>
 <body>
 <main>
   <h1>login-test</h1>
