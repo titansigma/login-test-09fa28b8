@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>login-test</title>
+<style>
+  body{margin:0;background:#0b0f19;color:#e5e7eb;font:16px/1.5 system-ui,sans-serif;}
+  main{max-width:680px;margin:0 auto;padding:48px 24px;}
+  h1{font-size:22px;margin:0 0 24px;}
+  ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;}
+  a{display:block;padding:16px 18px;background:#111827;border:1px solid #1f2937;border-radius:12px;color:#e5e7eb;text-decoration:none;font-weight:500;}
+  a:hover{background:#1f2937;}
+</style>
+<script>(function(){fetch("/api/auth/me",{credentials:"same-origin"}).then(function(r){if(r.status===401){location.href="/api/auth/login?returnTo="+encodeURIComponent(location.pathname+location.search);}}).catch(function(){});})();</script></head>
+<body>
+<main>
+  <h1>login-test</h1>
+  <ul><li><a href="/sample-data-report">Sample Data Report</a></li></ul>
+</main>
+</body>
+</html>

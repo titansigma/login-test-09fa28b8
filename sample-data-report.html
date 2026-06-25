@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Year-over-Year Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --accent3: #ff6b6b;
+    --text: #e8eaf6;
+    --muted: #8b90b0;
+    --card-radius: 14px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #1a1d27 0%, #12152a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 22px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .header-left h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, #6c63ff, #00d4aa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header-left p { color: var(--muted); font-size: 0.85rem; margin-top: 3px; }
+  .badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.78rem;
+    color: var(--accent2);
+    font-weight: 600;
+  }
+
+  /* LOADING */
+  .loading {
+    display: flex; align-items: center; justify-content: center;
+    height: 70vh; flex-direction: column; gap: 16px;
+  }
+  .spinner {
+    width: 44px; height: 44px;
+    border: 4px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* MAIN */
+  .main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* KPI CARDS */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(108,99,255,0.15); }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .kpi-card.purple::before { background: var(--accent); }
+  .kpi-card.teal::before   { background: var(--accent2); }
+  .kpi-card.red::before    { background: var(--accent3); }
+  .kpi-card.gold::before   { background: #f4c542; }
+  .kpi-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .kpi-value { font-size: 1.9rem; font-weight: 700; margin: 6px 0 4px; }
+  .kpi-sub   { font-size: 0.78rem; color: var(--muted); }
+  .kpi-card.purple .kpi-value { color: #a89bff; }
+  .kpi-card.teal   .kpi-value { color: var(--accent2); }
+  .kpi-card.red    .kpi-value { color: var(--accent3); }
+  .kpi-card.gold   .kpi-value { color: #f4c542; }
+
+  /* FILTERS */
+  .filter-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+  }
+  .filter-bar label { font-size: 0.8rem; color: var(--muted); margin-right: 6px; }
+  .filter-bar select, .filter-bar input[type=range] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    outline: none;
+  }
+  .filter-bar select:focus { border-color: var(--accent); }
+  .month-checkboxes {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  }
+  .month-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .month-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .filter-divider { width: 1px; height: 28px; background: var(--border); }
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .reset-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 4px;
+    margin-bottom: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 5px;
+    width: fit-content;
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 8px 20px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .tab-btn:not(.active):hover { background: var(--surface2); color: var(--text); }
+
+  /* VIEWS */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* CHART GRID */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  .chart-grid.single { grid-template-columns: 1fr; }
+  @media(max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 22px;
+  }
+  .chart-card h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 16px;
+  }
+  .chart-card canvas { max-height: 300px; }
+
+  /* TABLE */
+  .table-controls {
+    display: flex; gap: 12px; align-items: center;
+    margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .table-controls select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    outline: none;
+    cursor: pointer;
+  }
+  .table-controls span { color: var(--muted); font-size: 0.82rem; }
+
+  .table-wrap { overflow-x: auto; border-radius: 10px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  thead tr {
+    background: var(--surface2);
+  }
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  th:hover { color: var(--text); }
+  th .sort-arrow { margin-left: 4px; opacity: 0.4; }
+  th.sorted .sort-arrow { opacity: 1; color: var(--accent); }
+  td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  .pos { color: var(--accent2); font-weight: 600; }
+  .neg { color: var(--accent3); font-weight: 600; }
+  .bar-cell { display: flex; align-items: center; gap: 8px; }
+  .mini-bar-bg { flex: 1; background: var(--surface2); border-radius: 4px; height: 6px; min-width: 60px; }
+  .mini-bar { height: 6px; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+
+  /* HEATMAP VIEW */
+  .heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+  }
+  .hm-cell {
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid var(--border);
+    transition: transform 0.15s;
+    cursor: default;
+  }
+  .hm-cell:hover { transform: scale(1.04); }
+  .hm-month { font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; }
+  .hm-pct { font-size: 1.4rem; font-weight: 800; }
+  .hm-label { font-size: 0.7rem; color: rgba(255,255,255,0.6); margin-top: 3px; }
+
+  .no-data { text-align: center; color: var(--muted); padding: 40px; font-size: 0.9rem; }
+</style>
+<script>window.__DATA__=[];window.loadData=async function(){try{const r=await fetch("/api/data?report=sample-data-report");if(r.ok){const j=await r.json();if(Array.isArray(j.rows))return j.rows;}}catch(e){}return window.__DATA__;};</script><script>(function(){fetch("/api/auth/me",{credentials:"same-origin"}).then(function(r){if(r.status===401){location.href="/api/auth/login?returnTo="+encodeURIComponent(location.pathname+location.search);}}).catch(function(){});})();</script></head>
+<body><nav style="position:sticky;top:0;z-index:2147483647;display:flex;align-items:center;gap:12px;padding:8px 14px;background:#0b0f19;color:#e5e7eb;font:500 13px/1.2 system-ui,sans-serif;border-bottom:1px solid #1f2937;">
+  <a href="/" style="color:#a5b4fc;text-decoration:none;font-weight:600;">⌂ All reports</a>
+  <select onchange="if(this.value)location.href=this.value" style="margin-left:auto;background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:6px;padding:4px 8px;font:inherit;"><option value="/sample-data-report" selected>Sample Data Report</option></select>
+</nav>
+
+<div class="header">
+  <div class="header-left">
+    <h1>📊 Year-over-Year Dashboard</h1>
+    <p>Monthly performance: 2023 vs 2024 · Lookup Table</p>
+  </div>
+  <div class="badge" id="data-badge">Loading…</div>
+</div>
+
+<div id="loading" class="loading">
+  <div class="spinner"></div>
+  <span style="color:var(--muted);font-size:0.9rem;">Fetching data…</span>
+</div>
+
+<div id="app" style="display:none;">
+  <div class="main">
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <div>
+        <label>Months</label>
+        <div class="month-checkboxes" id="month-chips"></div>
+      </div>
+      <div class="filter-divider"></div>
+      <div>
+        <label>Sort by</label>
+        <select id="sort-select">
+          <option value="month-asc">Month ↑</option>
+          <option value="pct_change-desc">% Change ↓</option>
+          <option value="pct_change-asc">% Change ↑</option>
+          <option value="change-desc">Abs Change ↓</option>
+          <option value="year24-desc">2024 Value ↓</option>
+        </select>
+      </div>
+      <div class="filter-divider"></div>
+      <button class="reset-btn" id="reset-btn">✕ Reset</button>
+      <div style="margin-left:auto;color:var(--muted);font-size:0.8rem;" id="filter-count"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="charts">Charts</button>
+      <button class="tab-btn" data-tab="heatmap">Heat Map</button>
+      <button class="tab-btn" data-tab="table">Data Table</button>
+    </div>
+
+    <!-- OVERVIEW TAB -->
+    <div class="view active" id="tab-overview">
+      <div class="chart-grid">
+        <div class="chart-card">
+          <h3>2023 vs 2024 — Monthly Values</h3>
+          <canvas id="barCompareChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>% Change by Month</h3>
+          <canvas id="pctChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHARTS TAB -->
+    <div class="view" id="tab-charts">
+      <div class="chart-grid">
+        <div class="chart-card">
+          <h3>Trend Lines — 2023 &amp; 2024</h3>
+          <canvas id="lineChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Absolute Change per Month</h3>
+          <canvas id="changeBarChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-grid single">
+        <div class="chart-card">
+          <h3>Cumulative Growth (2024 vs 2023)</h3>
+          <canvas id="cumulChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- HEATMAP TAB -->
+    <div class="view" id="tab-heatmap">
+      <div class="chart-card" style="margin-bottom:20px;">
+        <h3>% Change Heat Map — Colour intensity reflects growth rate</h3>
+        <div class="heatmap-grid" id="heatmap-grid"></div>
+      </div>
+    </div>
+
+    <!-- TABLE TAB -->
+    <div class="view" id="tab-table">
+      <div class="chart-card">
+        <div class="table-controls">
+          <span id="table-count"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-col="month">Month <span class="sort-arrow">⇅</span></th>
+                <th data-col="year23">2023 <span class="sort-arrow">⇅</span></th>
+                <th data-col="year24">2024 <span class="sort-arrow">⇅</span></th>
+                <th data-col="change">Abs Change <span class="sort-arrow">⇅</span></th>
+                <th data-col="pct_change">% Change <span class="sort-arrow">⇅</span></th>
+                <th>Growth Bar</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const MONTH_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+let allRows = [];
+let filteredRows = [];
+let activeMonths = new Set();
+let sortKey = 'month-asc';
+let tableSortCol = 'month';
+let tableSortDir = 1;
+
+// Chart instances
+let charts = {};
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function fmt(n) { return Number(n).toLocaleString(); }
+function fmtPct(n) { return (n > 0 ? '+' : '') + Number(n).toFixed(2) + '%'; }
+
+function getMonthIndex(m) {
+  const i = MONTH_ORDER.indexOf(m);
+  return i === -1 ? 99 : i;
+}
+
+function sortRows(rows) {
+  const [col, dir] = sortKey.split('-');
+  return [...rows].sort((a, b) => {
+    if (col === 'month') {
+      const d = getMonthIndex(a.month) - getMonthIndex(b.month);
+      return dir === 'asc' ? d : -d;
+    }
+    const av = parseFloat(a[col]), bv = parseFloat(b[col]);
+    return dir === 'desc' ? bv - av : av - bv;
+  });
+}
+
+function applyFilters() {
+  filteredRows = allRows.filter(r => activeMonths.has(r.month));
+  filteredRows = sortRows(filteredRows);
+  updateFilterCount();
+  renderAll();
+}
+
+function updateFilterCount() {
+  const el = document.getElementById('filter-count');
+  el.textContent = `${filteredRows.length} of ${allRows.length} months`;
+}
+
+// ---- KPI ----
+function renderKPIs() {
+  const rows = filteredRows;
+  const total23 = rows.reduce((s,r) => s + +r.year23, 0);
+  const total24 = rows.reduce((s,r) => s + +r.year24, 0);
+  const avgPct = rows.reduce((s,r) => s + +r.pct_change, 0) / (rows.length || 1);
+  const best = rows.reduce((b,r) => !b || +r.pct_change > +b.pct_change ? r : b, null);
+
+  const kpis = [
+    { label: 'Total 2023', value: fmt(total23), sub: 'Sum of filtered months', cls: 'purple' },
+    { label: 'Total 2024', value: fmt(total24), sub: 'Sum of filtered months', cls: 'teal' },
+    { label: 'Avg Growth', value: fmtPct(avgPct), sub: 'Avg % change across months', cls: 'gold' },
+    { label: 'Best Month', value: best ? best.month : '—', sub: best ? fmtPct(best.pct_change) + ' growth' : '', cls: 'red' },
+  ];
+
+  document.getElementById('kpi-grid').innerHTML = kpis.map(k => `
+    <div class="kpi-card ${k.cls}">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>
+  `).join('');
+}
+
+// ---- CHARTS ----
+const PURPLE = 'rgba(108,99,255,0.85)';
+const TEAL   = 'rgba(0,212,170,0.85)';
+const ORANGE = 'rgba(244,197,66,0.85)';
+const RED    = 'rgba(255,107,107,0.85)';
+
+const gridColor = 'rgba(46,51,80,0.6)';
+const baseOptions = {
+  responsive: true,
+  plugins: { legend: { labels: { color: '#8b90b0', font: { size: 12 } } } },
+  scales: {
+    x: { ticks: { color: '#8b90b0' }, grid: { color: gridColor } },
+    y: { ticks: { color: '#8b90b0' }, grid: { color: gridColor } }
+  }
+};
+
+function labels() { return filteredRows.map(r => r.month); }
+
+function renderBarCompare() {
+  destroyChart('barCompare');
+  const ctx = document.getElementById('barCompareChart').getContext('2d');
+  charts['barCompare'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels(),
+      datasets: [
+        { label: '2023', data: filteredRows.map(r => +r.year23), backgroundColor: PURPLE, borderRadius: 5 },
+        { label: '2024', data: filteredRows.map(r => +r.year24), backgroundColor: TEAL, borderRadius: 5 },
+      ]
+    },
+    options: { ...JSON.parse(JSON.stringify(baseOptions)), barPercentage: 0.7 }
+  });
+}
+
+function renderPctChart() {
+  destroyChart('pctChart');
+  const ctx = document.getElementById('pctChart').getContext('2d');
+  const data = filteredRows.map(r => +r.pct_change);
+  charts['pctChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels(),
+      datasets: [{
+        label: '% Change',
+        data,
+        backgroundColor: data.map(v => v >= 0 ? 'rgba(0,212,170,0.8)' : 'rgba(255,107,107,0.8)'),
+        borderRadius: 5
+      }]
+    },
+    options: {
+      ...JSON.parse(JSON.stringify(baseOptions)),
+      plugins: {
+        ...baseOptions.plugins,
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: ctx => fmtPct(ctx.raw) }
+        }
+      }
+    }
+  });
+}
+
+function renderLineChart() {
+  destroyChart('lineChart');
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  charts['lineChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels(),
+      datasets: [
+        {
+          label: '2023', data: filteredRows.map(r => +r.year23),
+          borderColor: PURPLE, backgroundColor: 'rgba(108,99,255,0.1)',
+          tension: 0.4, fill: true, pointBackgroundColor: PURPLE, pointRadius: 4
+        },
+        {
+          label: '2024', data: filteredRows.map(r => +r.year24),
+          borderColor: TEAL, backgroundColor: 'rgba(0,212,170,0.08)',
+          tension: 0.4, fill: true, pointBackgroundColor: TEAL, pointRadius: 4
+        }
+      ]
+    },
+    options: JSON.parse(JSON.stringify(baseOptions))
+  });
+}
+
+function renderChangeBar() {
+  destroyChart('changeBar');
+  const ctx = document.getElementById('changeBarChart').getContext('2d');
+  charts['changeBar'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels(),
+      datasets: [{
+        label: 'Absolute Change',
+        data: filteredRows.map(r => +r.change),
+        backgroundColor: filteredRows.map(r => +r.change >= 0 ? ORANGE : RED),
+        borderRadius: 5
+      }]
+    },
+    options: {
+      ...JSON.parse(JSON.stringify(baseOptions)),
+      plugins: { ...baseOptions.plugins, legend: { display: false } }
+    }
+  });
+}
+
+function renderCumulChart() {
+  destroyChart('cumulChart');
+  const ctx = document.getElementById('cumulChart').getContext('2d');
+  let cum23 = 0, cum24 = 0;
+  const c23 = [], c24 = [];
+  filteredRows.forEach(r => { cum23 += +r.year23; cum24 += +r.year24; c23.push(cum23); c24.push(cum24); });
+  charts['cumulChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels(),
+      datasets: [
+        { label: 'Cumulative 2023', data: c23, borderColor: PURPLE, backgroundColor: 'rgba(108,99,255,0.08)', tension: 0.4, fill: true, pointRadius: 3 },
+        { label: 'Cumulative 2024', data: c24, borderColor: TEAL, backgroundColor: 'rgba(0,212,170,0.06)', tension: 0.4, fill: true, pointRadius: 3 }
+      ]
+    },
+    options: { ...JSON.parse(JSON.stringify(baseOptions)) }
+  });
+}
+
+// ---- HEATMAP ----
+function renderHeatmap() {
+  const rows = filteredRows;
+  const pcts = rows.map(r => +r.pct_change);
+  const maxPct = Math.max(...pcts, 1);
+  const minPct = Math.min(...pcts, 0);
+
+  function heatColor(val) {
+    const norm = (val - minPct) / (maxPct - minPct || 1);
+    const r = Math.round(108 + (0 - 108) * norm);
+    const g = Math.round(99 + (212 - 99) * norm);
+    const b = Math.round(255 + (170 - 255) * norm);
+    return `rgba(${r},${g},${b},${0.15 + norm * 0.65})`;
+  }
+
+  document.getElementById('heatmap-grid').innerHTML = rows.length === 0
+    ? '<p class="no-data">No data to display.</p>'
+    : rows.map(r => {
+        const pct = +r.pct_change;
+        const bg = heatColor(pct);
+        return `
+          <div class="hm-cell" style="background:${bg};border-color:${bg.replace(/[\d.]+\)$/, '0.4)')}">
+            <div class="hm-month">${r.month}</div>
+            <div class="hm-pct" style="color:${pct >= 0 ? '#00d4aa' : '#ff6b6b'}">${fmtPct(pct)}</div>
+            <div class="hm-label">23: ${fmt(r.year23)} → 24: ${fmt(r.year24)}</div>
+          </div>`;
+      }).join('');
+}
+
+// ---- TABLE ----
+function renderTable() {
+  const rows = [...filteredRows].sort((a, b) => {
+    let av = a[tableSortCol], bv = b[tableSortCol];
+    if (tableSortCol === 'month') { av = getMonthIndex(av); bv = getMonthIndex(bv); }
+    else { av = parseFloat(av); bv = parseFloat(bv); }
+    return (av - bv) * tableSortDir;
+  });
+
+  const maxPct = Math.max(...rows.map(r => +r.pct_change), 1);
+
+  document.getElementById('table-count').textContent = `${rows.length} month${rows.length !== 1 ? 's' : ''}`;
+  document.getElementById('table-body').innerHTML = rows.length === 0
+    ? `<tr><td colspan="6" class="no-data">No data for selected filters.</td></tr>`
+    : rows.map(r => {
+        const pct = +r.pct_change;
+        const barW = Math.min((pct / maxPct) * 100, 100);
+        return `
+          <tr>
+            <td><strong>${r.month}</strong></td>
+            <td>${fmt(r.year23)}</td>
+            <td>${fmt(r.year24)}</td>
+            <td class="${+r.change >= 0 ? 'pos' : 'neg'}">${+r.change >= 0 ? '+' : ''}${fmt(r.change)}</td>
+            <td class="${pct >= 0 ? 'pos' : 'neg'}">${fmtPct(pct)}</td>
+            <td>
+              <div class="bar-cell">
+                <div class="mini-bar-bg"><div class="mini-bar" style="width:${barW}%"></div></div>
+                <span style="font-size:0.75rem;color:var(--muted);min-width:45px">${fmtPct(pct)}</span>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+
+  // update sort arrows
+  document.querySelectorAll('th[data-col]').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.col === tableSortCol);
+    const arrow = th.querySelector('.sort-arrow');
+    if (th.dataset.col === tableSortCol) {
+      arrow.textContent = tableSortDir === 1 ? '↑' : '↓';
+    } else {
+      arrow.textContent = '⇅';
+    }
+  });
+}
+
+// ---- RENDER ALL ----
+function renderAll() {
+  renderKPIs();
+  const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+  if (activeTab === 'overview') { renderBarCompare(); renderPctChart(); }
+  else if (activeTab === 'charts') { renderLineChart(); renderChangeBar(); renderCumulChart(); }
+  else if (activeTab === 'heatmap') { renderHeatmap(); }
+  else if (activeTab === 'table') { renderTable(); }
+}
+
+// ---- INIT ----
+async function init() {
+  const rows = await loadData();
+  allRows = rows.map(r => ({
+    month: r.month,
+    year23: r.year23,
+    year24: r.year24,
+    change: r.change,
+    pct_change: r.pct_change
+  }));
+
+  // Sort by month order for default
+  allRows.sort((a, b) => getMonthIndex(a.month) - getMonthIndex(b.month));
+  activeMonths = new Set(allRows.map(r => r.month));
+
+  document.getElementById('data-badge').textContent = `${allRows.length} months · Live Data`;
+
+  // Month chips
+  const chipContainer = document.getElementById('month-chips');
+  MONTH_ORDER.forEach(m => {
+    if (!allRows.find(r => r.month === m)) return;
+    const chip = document.createElement('span');
+    chip.className = 'month-chip active';
+    chip.textContent = m;
+    chip.dataset.month = m;
+    chip.addEventListener('click', () => {
+      if (activeMonths.has(m)) {
+        if (activeMonths.size === 1) return; // keep at least one
+        activeMonths.delete(m);
+        chip.classList.remove('active');
+      } else {
+        activeMonths.add(m);
+        chip.classList.add('active');
+      }
+      applyFilters();
+    });
+    chipContainer.appendChild(chip);
+  });
+
+  // Sort select
+  document.getElementById('sort-select').addEventListener('change', e => {
+    sortKey = e.target.value;
+    applyFilters();
+  });
+
+  // Reset
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    activeMonths = new Set(allRows.map(r => r.month));
+    sortKey = 'month-asc';
+    document.getElementById('sort-select').value = 'month-asc';
+    document.querySelectorAll('.month-chip').forEach(c => c.classList.add('active'));
+    applyFilters();
+  });
+
+  // Tabs
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      renderAll();
+    });
+  });
+
+  // Table column sort
+  document.querySelectorAll('th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+      if (tableSortCol === th.dataset.col) tableSortDir *= -1;
+      else { tableSortCol = th.dataset.col; tableSortDir = 1; }
+      renderTable();
+    });
+  });
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  applyFilters();
+}
+
+init();
+</script>
+</body>
+</html>

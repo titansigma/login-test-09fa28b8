@@ -1,0 +1,67 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "api/data.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/auth/login.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/auth/callback.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/auth/me.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/auth/logout.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/data",
+      "dest": "/api/data.js"
+    },
+    {
+      "src": "/api/auth/login",
+      "dest": "/api/auth/login.js"
+    },
+    {
+      "src": "/api/auth/callback",
+      "dest": "/api/auth/callback.js"
+    },
+    {
+      "src": "/api/auth/me",
+      "dest": "/api/auth/me.js"
+    },
+    {
+      "src": "/api/auth/logout",
+      "dest": "/api/auth/logout.js"
+    },
+    {
+      "src": "/",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/(sample-data-report)",
+      "dest": "/$1.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
